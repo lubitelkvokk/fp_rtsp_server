@@ -1,0 +1,20 @@
+{application, fp_rtsp_server, [
+    {description, "An OTP application"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {fp_rtsp_server, []}},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, [
+        fp_rtsp_server,
+        fp_rtsp_server_sup,
+        fp_rtsp_listener,
+        fp_rtsp_worker,
+        fp_rtsp_codec
+    ]},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+]}.
