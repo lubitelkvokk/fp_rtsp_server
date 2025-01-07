@@ -17,7 +17,16 @@ init([]) ->
       start => {fp_rtsp_listener, start_link, []},
       restart => permanent,
       shutdown => 5000,
+      type => worker},
+
+    % Глобальное хранилище
+    #{id => fp_storage,
+      start => {fp_storage, start_link, []},
+      restart => permanent,
+      shutdown => 100000,
       type => worker}
   ],
+
   {ok, {{one_for_one, 10, 10}, Children}}.
+
 

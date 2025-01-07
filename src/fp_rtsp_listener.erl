@@ -29,11 +29,13 @@ init([]) ->
   {ok, ListenSocket}.
 
 accept(ListenSocket) ->
+  {ok, Socket} = gen_tcp:accept(ListenSocket),
+  SessionId = rand:uniform(1000000) + 1000000,
+  io:format("Session id ~p~n", [SessionId]),
   spawn(fun() ->
-    {ok, Socket} = gen_tcp:accept(ListenSocket),
-    fp_rtsp_worker:loop(Socket),
-    accept(ListenSocket)
-        end).
+    fp_rtsp_worker:loop(Socket, SessionId)
+        end),
+  accept(ListenSocket).
 
 handle_info(_Msg, State) ->
   {noreply, State}.
