@@ -223,7 +223,7 @@ service(#rtsp_message{method = 'PLAY', uri = URI,
   <<"RTSP/1.0 200 OK\r\n",
     "CSeq: ", CSeq/binary, "\r\n",
     "RTP-Info: url=", URI/binary, "/trackID=1;seq=1;rtptime=0\r\n",
-    "Range: npt=0.0-\r\n",
+    "Range: npt=0.0-60.0\r\n",
     "Session: ", (integer_to_binary(SessionId))/binary, ";timeout=60\r\n",
     "Server: Erlang RTSP Server\r\n",
     "\r\n">>;
