@@ -30,10 +30,11 @@ init([]) ->
 
 accept(ListenSocket) ->
   {ok, Socket} = gen_tcp:accept(ListenSocket),
-  SessionId = rand:uniform(1000000) + 1000000,
-  io:format("Session id ~p~n", [SessionId]),
+  {ok, {ClientIP, _ClientPort}} = inet:peername(Socket),
+  io:format("client ip ~p~n", [ClientIP]),
+
   spawn(fun() ->
-    fp_rtsp_worker:loop(Socket, SessionId)
+    fp_rtsp_worker:start(Socket, ClientIP)
         end),
   accept(ListenSocket).
 
