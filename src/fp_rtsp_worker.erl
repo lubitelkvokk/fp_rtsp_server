@@ -15,7 +15,8 @@
   version,         % Версия протокола, например, RTSP/1.0
   headers = #{},   % Заголовки в формате Map
   body = <<>>,      % Тело сообщения (может быть пустым)
-  session_id = undefined
+  session_id = undefined,
+  client_ports = undefined
 }).
 
 loop(Socket, SessionId) ->
@@ -38,30 +39,30 @@ loop(Socket, SessionId) ->
   end.
 
 parse(Data) when is_binary(Data) ->
-  % Удаляем лишние символы и заменяем \r\n на \n
+  % Очистка данных
   CleanedData = binary:replace(Data, <<"\r\n">>, <<"\n">>, [global]),
-
-  % Разделяем данные на строки
   Lines = binary:split(CleanedData, <<"\n">>, [global]),
 
   case Lines of
     [RequestLine | Rest] ->
-      % Удаляем лишние пробелы в строке запроса
       TrimmedRequestLine = trim_binary(RequestLine),
       CleanedRequestLine = clean_request_line(TrimmedRequestLine),
 
-      % Разбираем первую строку
       case split_request_line(CleanedRequestLine) of
         {ok, Method, URI, Version} ->
-          % Разбираем заголовки и тело
           {HeadersBin, Body} = lists:foldl(fun parse_line/2, {[], <<>>}, Rest),
           Headers = parse_headers(HeadersBin),
+
+          % Извлечение client_port
+          Transport = maps:get(<<"Transport">>, Headers, <<>>),
+          ClientPorts = extract_client_port(Transport),
           #rtsp_message{
             method = binary_to_atom(Method, utf8),
             uri = URI,
             version = Version,
             headers = Headers,
-            body = Body
+            body = Body,
+            client_ports = ClientPorts
           };
         {error, _Line} ->
           error
@@ -71,6 +72,23 @@ parse(Data) when is_binary(Data) ->
   end;
 parse(_) ->
   error.
+
+
+extract_client_port(Transport) ->
+  case binary:match(Transport, <<"client_port=">>) of
+    {Pos, _Length} ->
+      % Извлекаем подстроку после "client_port="
+      PortString = binary:part(Transport, Pos + 12, byte_size(Transport) - (Pos + 12)),
+      % Разделяем порты по символу "-"
+      case binary:split(PortString, <<"-">>, [global]) of
+        [StartPort, EndPort] ->
+          {binary_to_integer(StartPort), binary_to_integer(EndPort)};
+        _ ->
+          undefined
+      end;
+    nomatch ->
+      undefined
+  end.
 
 trim_binary(Bin) when is_binary(Bin) ->
   re:replace(Bin, <<"^[ \t]+|[ \t]+$">>, <<>>, [global, {return, binary}]).
@@ -107,11 +125,14 @@ parse_uri(URI) when is_binary(URI) ->
     Segments -> lists:last(Segments)
   end.
 
-service(#rtsp_message{method = 'OPTIONS'} = _Message) ->
+service(#rtsp_message{method = 'OPTIONS', headers = Headers} = _Message) ->
+  CSeq = maps:get(<<"CSeq">>, Headers, undefined),
   % Ответ с перечнем доступных методов
-  SupportedMethods = <<"OPTIONS, DESCRIBE, SETUP, PLAY, PAUSE, TEARDOWN">>,
+  SupportedMethods = <<"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE">>,
   io:format("Handling OPTIONS request~n"),
-  <<"RTSP/1.0 200 OK\r\nPublic: ", SupportedMethods/binary, "\r\n\r\n">>;
+  <<"RTSP/1.0 200 OK\r\n",
+    "CSeq: ", CSeq/binary, "\r\n",
+    "Public: ", SupportedMethods/binary, "\r\n\r\n">>;
 
 service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session_id = SessionId} = _Message) ->
   % Извлечение CSeq
@@ -126,7 +147,7 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
 
   % Создаем тело сообщения (SDP)
   SDP = <<"v=0\r\n",
-    "o=lubitelkvokk ", SessionIdBinary/binary, " IN IP4 127.0.0.1\r\n",
+    "o=lubitelkvokk ", SessionIdBinary/binary, " ", SessionIdBinary/binary, " IN IP4 127.0.0.1\r\n",
     "s=SDP Seminar\r\n",
     "i=RTSP Erlang server\r\n",
     "u=http://www.additional.info.com\r\n",
@@ -152,10 +173,22 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
     SDP/binary>>,
 
   Response;
-service(#rtsp_message{method = 'SETUP', uri = URI} = _Message) ->
-  % Пример обработки SETUP-запроса
+service(#rtsp_message{method = 'SETUP', uri = URI, session_id = SessionId, headers = Headers, client_ports = {UdpPort, RTCPPort}} = _Message) ->
+  SessionIdBinary = integer_to_binary(SessionId),
+  CSeq = maps:get(<<"CSeq">>, Headers, undefined),
+  {ok, ServerPort} = gen_server:call(fp_storage, {get_port}),
+  ServerRTCPPort = ServerPort + 1,
+  io:format("free port ~p~n", [ServerPort]),
   io:format("Handling SETUP request for ~s~n", [URI]),
-  <<"RTSP/1.0 200 OK\r\nSession: 12345678\r\n\r\n">>;
+  <<"RTSP/1.0 200 OK\r\n",
+    "CSeq: ", CSeq/binary, "\r\n",
+    "Session: ", SessionIdBinary/binary, "\r\n",
+    "Transport: RTP/AVP;unicast;",
+    "client_port=",
+    (integer_to_binary(UdpPort))/binary, "-", (integer_to_binary(RTCPPort))/binary, ";",
+    "server_port=",
+    (integer_to_binary(ServerPort))/binary, "-", (integer_to_binary(ServerRTCPPort))/binary, "\r\n",
+    "\r\n">>;
 
 service(#rtsp_message{method = 'PLAY', uri = URI} = _Message) ->
   % Пример обработки PLAY-запроса
