@@ -158,7 +158,7 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
 
   % Создаем тело сообщения (SDP)
   SDP = <<"v=0\r\n",
-    "o=lubitelkvokk ", SessionIdBinary/binary, " ", SessionIdBinary/binary, " IN IP4 172.20.49.113\r\n",
+    "o=lubitelkvokk ", SessionIdBinary/binary, " ", SessionIdBinary/binary, " IN IP4 127.0.0.1\r\n",
     "s=SDP Seminar\r\n",
     "i=RTSP Erlang server\r\n",
     "u=http://www.additional.info.com\r\n",
@@ -166,14 +166,12 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
     "c=IN IP4 127.0.0.1\r\n",
     "t=0 0\r\n",
     "a=recvonly\r\n",
-    "m=video 0 RTP/AVP 96\r\n",
+    "m=video 0 RTP/AVP 97\r\n",
     "b=AS:50000\r\n",
     "a=framerate:30.0\r\n",
 %%    "a=control:rtsp://172.20.49.113:7554/abob/trackID=1",
-    "a=fmtp:96 packetization-mode=1; profile-level-id=420029; sprop-parameter-sets=Z0IAKeKQFAe2AtwEBAaQeJEV,aM48gA==\r\n",
     "a=rtpmap:96 H264/90000\r\n",
-    "a=fmtp:96 packetization-mode=1;profile-level-id=42C01E;sprop-parameter-sets=Z0LAHtkDxWhAAAADAEAAAAwDxYuS,aMuMsg==\r\n",
-
+    "a=fmtp:96 packetization-mode=1;profile-level-id=42C01E;sprop-parameter-sets=Z0IAKeKQFAe2AtwEBAaQeJEV,aM48gA==\r\n",
     "\r\n">>,
 
 
@@ -183,7 +181,7 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
   Response = <<"RTSP/1.0 200 OK\r\n",
     "CSeq: ", CSeq/binary, "\r\n",
     "Content-Type: application/sdp\r\n",
-    "Content-Base: rtsp://172.20.49.113:7554/abob\r\n",
+    "Content-Base: rtsp://127.0.0.1:7554/abob\r\n",
     "Content-Length: ", ContentLength/binary, "\r\n",
     "\r\n",
     SDP/binary>>,
@@ -218,12 +216,12 @@ service(#rtsp_message{method = 'PLAY', uri = URI,
   io:format("Handling PLAY request for ~s~n", [URI]),
 
   %starting send rtp packets
-  spawn(fp_rtp_worker, find_and_send_video, ["resources/output.h264", get_storage_data(client_info)]),
+  spawn(fp_rtp_worker, find_and_send_video, ["priv/resources/output_fixed.h264", get_storage_data(client_info)]),
 
   <<"RTSP/1.0 200 OK\r\n",
     "CSeq: ", CSeq/binary, "\r\n",
     "RTP-Info: url=", URI/binary, "/trackID=1;seq=1;rtptime=0\r\n",
-    "Range: npt=0.0-60.0\r\n",
+    "Range: npt=0.0-166.0\r\n",
     "Session: ", (integer_to_binary(SessionId))/binary, ";timeout=60\r\n",
     "Server: Erlang RTSP Server\r\n",
     "\r\n">>;

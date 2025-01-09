@@ -30,7 +30,7 @@ split_video_into_rtp(<<>>, _MaxPayloadSize, _Seq, _Timestamp, _TimestampIncremen
 split_video_into_rtp(Data, MaxPayloadSize, SequenceNumber, Timestamp, TimestampIncrement, SSRC, PayloadType, Packets) ->
   case Data of
     <<Chunk:MaxPayloadSize/binary, Rest/binary>> ->
-      Marker = if Rest == <<>> -> 1; true -> 0 end, % Устанавливаем Marker для последнего пакета
+      Marker = if Rest == <<>> -> 0; true -> 1 end, % Устанавливаем Marker для последнего пакета
       Header = generate_rtp_header(SequenceNumber, Timestamp, SSRC, Marker, PayloadType),
       Packet = <<Header/binary, Chunk/binary>>,
       split_video_into_rtp(Rest, MaxPayloadSize, SequenceNumber + 1, Timestamp + TimestampIncrement, TimestampIncrement, SSRC, PayloadType, [Packet | Packets]);
@@ -49,7 +49,7 @@ send_video(Socket, IPv4, Port, RTPPackets) ->
       % Отправка пакета
       gen_udp:send(Socket, IPv4, Port, Packet),
       % Задержка (например, 40 мс для ~25 fps)
-      timer:sleep(40)
+      timer:sleep(30)
     end,
     RTPPackets).
 
@@ -66,7 +66,7 @@ find_and_send_video(FileName, ClientInfo = #client_info{ssrc = SSRC, video_serve
       SequenceNumber = 0,
       Timestamp = 0,
       PayloadType = 96,
-      Packets = split_video_into_rtp(Data, MTU, SequenceNumber, Timestamp, 3600, SSRC, PayloadType),
+      Packets = split_video_into_rtp(Data, MTU, SequenceNumber, Timestamp, 512, SSRC, PayloadType),
 
       % Открытие UDP-сокета
       {ok, Socket} = gen_udp:open(ServerPort, [binary, {active, true}]),
