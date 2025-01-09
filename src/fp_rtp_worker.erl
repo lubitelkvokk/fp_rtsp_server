@@ -49,7 +49,7 @@ send_video(Socket, IPv4, Port, RTPPackets) ->
       % Отправка пакета
       gen_udp:send(Socket, IPv4, Port, Packet),
       % Задержка (например, 40 мс для ~25 fps)
-      timer:sleep(30)
+      timer:sleep(33)
     end,
     RTPPackets).
 
@@ -66,7 +66,7 @@ find_and_send_video(FileName, ClientInfo = #client_info{ssrc = SSRC, video_serve
       SequenceNumber = 0,
       Timestamp = 0,
       PayloadType = 96,
-      Packets = split_video_into_rtp(Data, MTU, SequenceNumber, Timestamp, 512, SSRC, PayloadType),
+      Packets = split_video_into_rtp(Data, MTU, SequenceNumber, Timestamp, 1000, SSRC, PayloadType),
 
       % Открытие UDP-сокета
       {ok, Socket} = gen_udp:open(ServerPort, [binary, {active, true}]),
