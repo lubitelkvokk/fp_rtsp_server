@@ -164,14 +164,14 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
     "u=http://www.additional.info.com\r\n",
     "e=pasha110.mikhailov@yandex.ru\r\n",
     "c=IN IP4 127.0.0.1\r\n",
-    "t=0 0\r\n",
+    "t=0 30\r\n",
     "a=recvonly\r\n",
     "m=video 0 RTP/AVP 96\r\n",
     "b=AS:50000\r\n",
     "a=framerate:30.0\r\n",
 %%    "a=control:rtsp://172.20.49.113:7554/abob/trackID=1",
     "a=rtpmap:96 H264/90000\r\n",
-    "a=fmtp:96 packetization-mode=1;profile-level-id=42C01E;sprop-parameter-sets=Z01AHtkB4L/lwFoMAg8gAAAAwAgAAAAB4Hixcn,aOuPIA==\r\n",
+    "a=fmtp:96 packetization-mode=1;profile-level-id=64003E;sprop-parameter-sets=ZAA+rNlB4L/lwFqDAIMgAAADACAD0JAB4QCDLA==,74bywA==\r\n",
     "\r\n">>,
 
 
@@ -216,12 +216,11 @@ service(#rtsp_message{method = 'PLAY', uri = URI,
   io:format("Handling PLAY request for ~s~n", [URI]),
 
   %starting send rtp packets
-  spawn(fp_rtp_worker, find_and_send_video, ["priv/resources/output_with_sps_pps.h264", get_storage_data(client_info)]),
-
+  spawn(fp_rtp_worker, find_and_send_video, ["priv/resources/output_fixed.h264", get_storage_data(client_info)]),
   <<"RTSP/1.0 200 OK\r\n",
     "CSeq: ", CSeq/binary, "\r\n",
     "RTP-Info: url=", URI/binary, "/trackID=1;seq=1;rtptime=0\r\n",
-    "Range: npt=0.0-166.0\r\n",
+    "Range: npt=0.0-30.0\r\n",
     "Session: ", (integer_to_binary(SessionId))/binary, ";timeout=60\r\n",
     "Server: Erlang RTSP Server\r\n",
     "\r\n">>;
