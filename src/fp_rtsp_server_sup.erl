@@ -17,13 +17,17 @@ init([]) ->
       start => {fp_storage, start_link, []},
       restart => permanent,
       shutdown => 100000,
-      type => worker},
+      type => worker,
+      modules => [fp_worker]
+    },
     % Процесс RTSP-сервера
     #{id => fp_rtsp_listener,
       start => {fp_rtsp_listener, start_link, []},
       restart => permanent,
       shutdown => 5000,
-      type => worker}
+      type => worker,
+      modules => [fp_rtsp_listener]
+    }
 
   ],
 

@@ -65,7 +65,6 @@ handle_call({set_client_port, PortType, NewPort}, {Pid, _}, State = #fp_storage_
 handle_call({get, DataType}, _From = {Pid, _}, State = #fp_storage_state{client_map = ClientMap}) ->
   ClientInfo = case maps:get(Pid, ClientMap) of
                  undefined ->
-                   % Генерируем ошибку, чтобы супервизор мог перезапустить процесс
                    exit({error, {not_registered, Pid}});
                  Info -> Info
                end,

@@ -14,22 +14,11 @@
 -include("client_info.hrl").
 
 generate_rtp_header(SequenceNumber, Timestamp, SSRCString, Marker, PayloadType) ->
-  %% Преобразуем SSRC в целое число, если это строка
   SSRC = case SSRCString of
            <<_Binary/binary>> -> list_to_integer(binary_to_list(SSRCString), 16);
            _List -> list_to_integer(SSRCString, 16)
          end,
   <<2:2, 0:1, 0:1, 0:4, Marker:1, PayloadType:7, SequenceNumber:16, Timestamp:32, SSRC:32>>.
-
-
-is_valid_rtp_header(SequenceNumber, Timestamp, SSRC, Marker, PayloadType) ->
-  SequenceNumber >= 0 andalso SequenceNumber =< 65535,
-  Timestamp >= 0 andalso Timestamp =< 4294967295,
-  SSRC >= 0 andalso SSRC =< 4294967295,
-  Marker >= 0 andalso Marker =< 1,
-  PayloadType >= 0 andalso PayloadType =< 127.
-
-
 
 %% Разделение H.264 на NAL-юниты
 split_nal_units(Data) ->
@@ -107,7 +96,7 @@ send_video(Socket, IPv4, Port, RTPPackets) ->
   lists:foreach(
     fun(Packet) ->
       gen_udp:send(Socket, IPv4, Port, Packet),
-      timer:sleep(5) %% 30 fps ~ 33 ms между кадрами
+      timer:sleep(2)
     end,
     RTPPackets
   ).
@@ -124,11 +113,10 @@ find_and_send_video(FileName, ClientInfo = #client_info{ssrc = SSRC, video_serve
           io:format("Error: File is empty or invalid~n"),
           {error, empty_file};
         _ ->
-          %% Продолжить обработку
           MTU = 1400,
           SequenceNumber = 0,
           Timestamp = 0,
-          TimestampIncrement = 900, %% Пример для 25 fps
+          TimestampIncrement = 2500,
           PayloadType = 96,
 
           {Packets, _, _} = generate_rtp_packets(Data, MTU, SequenceNumber, Timestamp, TimestampIncrement, SSRC, PayloadType),

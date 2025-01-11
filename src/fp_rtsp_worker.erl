@@ -50,7 +50,6 @@ get_storage_data(DataType) ->
   end.
 
 parse(Data) when is_binary(Data) ->
-  % Очистка данных
   CleanedData = binary:replace(Data, <<"\r\n">>, <<"\n">>, [global]),
   Lines = binary:split(CleanedData, <<"\n">>, [global]),
 
@@ -88,9 +87,7 @@ parse(_) ->
 extract_client_port(Transport) ->
   case binary:match(Transport, <<"client_port=">>) of
     {Pos, _Length} ->
-      % Извлекаем подстроку после "client_port="
       PortString = binary:part(Transport, Pos + 12, byte_size(Transport) - (Pos + 12)),
-      % Разделяем порты по символу "-"
       case binary:split(PortString, <<"-">>, [global]) of
         [StartPort, EndPort] ->
           {binary_to_integer(StartPort), binary_to_integer(EndPort)};
@@ -138,7 +135,6 @@ parse_uri(URI) when is_binary(URI) ->
 
 service(#rtsp_message{method = 'OPTIONS', headers = Headers} = _Message) ->
   CSeq = maps:get(<<"CSeq">>, Headers, undefined),
-  % Ответ с перечнем доступных методов
   SupportedMethods = <<"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE">>,
   io:format("Handling OPTIONS request~n"),
   <<"RTSP/1.0 200 OK\r\n",
@@ -169,7 +165,6 @@ service(#rtsp_message{method = 'DESCRIBE', uri = URI, headers = Headers, session
     "m=video 0 RTP/AVP 96\r\n",
     "b=AS:50000\r\n",
     "a=framerate:30.0\r\n",
-%%    "a=control:rtsp://172.20.49.113:7554/abob/trackID=1",
     "a=rtpmap:96 H264/90000\r\n",
     "a=fmtp:96 packetization-mode=1;profile-level-id=64003E;sprop-parameter-sets=ZAA+rNlB4L/lwFqDAIMgAAADACAD0JAB4QCDLA==,74bywA==\r\n",
     "\r\n">>,
@@ -224,6 +219,10 @@ service(#rtsp_message{method = 'PLAY', uri = URI,
     "Session: ", (integer_to_binary(SessionId))/binary, ";timeout=60\r\n",
     "Server: Erlang RTSP Server\r\n",
     "\r\n">>;
+
+service(#rtsp_message{method = 'TEARDOWN'} = _Message) ->
+  io:format("special usupported for supervisor work checking~n"),
+  exit(not_implemented);
 
 service(#rtsp_message{method = Method}) ->
   io:format("Unknown method: ~s~n", [Method]),
