@@ -32,22 +32,20 @@ create_rtp_packets(NAL, MTU, SequenceNumber, Timestamp, SSRC, PayloadType) ->
   MaxPayloadSize = MTU - HeaderSize,
   %% Преобразование NAL-заголовка
   NALHeader = binary:part(NAL, 0, 1),
-  NALHeaderInt = binary:at(NALHeader, 0), %% Преобразуем <<6>> в 6
+  NALHeaderInt = binary:at(NALHeader, 0),
   NALPayload = binary:part(NAL, 1, byte_size(NAL) - 1),
   NalType = NALHeaderInt band 16#1F, %% Последние 5 бит NAL-заголовка
 
   case byte_size(NAL) =< MaxPayloadSize of
     true ->
-      %% Маленький NAL-юнит
       Marker = 1,
       Header = generate_rtp_header(SequenceNumber, Timestamp, SSRC, Marker, PayloadType),
       [<<Header/binary, NAL/binary>>];
 
     false ->
-      %% Большой NAL-юнит (FU-A)
-      NALHeaderInt = binary:at(NALHeader, 0), %% Преобразуем <<...>> в целое число
+      NALHeaderInt = binary:at(NALHeader, 0),
       FUIndicator = (NALHeaderInt band 16#E0) bor 28,
-      FirstPacketHeader = 128 bor NalType, %% FU Header (Start=1)
+      FirstPacketHeader = 128 bor NalType,
       FirstPacket = <<FUIndicator, FirstPacketHeader, (binary:part(NALPayload, 0, MaxPayloadSize))/binary>>,
 
       RemainingPayload = binary:part(NALPayload, MaxPayloadSize, byte_size(NALPayload) - MaxPayloadSize),
@@ -57,29 +55,25 @@ create_rtp_packets(NAL, MTU, SequenceNumber, Timestamp, SSRC, PayloadType) ->
 
 rtp_packets_fua(<<>>, _MaxPayloadSize, _SequenceNumber, _Timestamp, _SSRC, _PayloadType, _FUIndicator, _NalType, Packets) ->
   lists:reverse(Packets);
-
 rtp_packets_fua(Data, MaxPayloadSize, SequenceNumber, Timestamp, SSRC, PayloadType, FUIndicator, NalType, Packets) ->
   case byte_size(Data) =< MaxPayloadSize of
     true ->
-      %% Последний фрагмент
       Marker = 1,
-      FUHeader = 64 bor NalType, %% Start=0, End=1
+      FUHeader = 64 bor NalType,
       Header = generate_rtp_header(SequenceNumber, Timestamp, SSRC, Marker, PayloadType),
       Packet = <<Header/binary, FUIndicator, FUHeader, Data/binary>>,
       lists:reverse([Packet | Packets]);
 
     false ->
-      %% Обычный фрагмент
       Chunk = binary:part(Data, 0, MaxPayloadSize),
       Rest = binary:part(Data, MaxPayloadSize, byte_size(Data) - MaxPayloadSize),
       Marker = 0,
-      FUHeader = NalType, %% Start=0, End=0
+      FUHeader = NalType,
       Header = generate_rtp_header(SequenceNumber, Timestamp, SSRC, Marker, PayloadType),
       Packet = <<Header/binary, FUIndicator, FUHeader, Chunk/binary>>,
       rtp_packets_fua(Rest, MaxPayloadSize, SequenceNumber + 1, Timestamp, SSRC, PayloadType, FUIndicator, NalType, [Packet | Packets])
   end.
 
-%% Генерация RTP-пакетов для всего H.264
 generate_rtp_packets(Data, MTU, SequenceNumber, Timestamp, TimestampIncrement, SSRC, PayloadType) ->
   NALUnits = split_nal_units(Data),
   lists:foldl(
@@ -91,7 +85,6 @@ generate_rtp_packets(Data, MTU, SequenceNumber, Timestamp, TimestampIncrement, S
     NALUnits
   ).
 
-%% Отправка RTP-пакетов
 send_video(Socket, IPv4, Port, RTPPackets) ->
   lists:foreach(
     fun(Packet) ->
@@ -101,7 +94,6 @@ send_video(Socket, IPv4, Port, RTPPackets) ->
     RTPPackets
   ).
 
-%% Найти и отправить видео
 find_and_send_video(FileName, ClientInfo = #client_info{ssrc = SSRC, video_server_port = ServerPort, ip = ClientIp, video_port = ClientPort}) ->
   io:format("Starting video stream: ~s~n", [FileName]),
   io:format("Client info: ~p~n", [ClientInfo]),
@@ -121,11 +113,9 @@ find_and_send_video(FileName, ClientInfo = #client_info{ssrc = SSRC, video_serve
 
           {Packets, _, _} = generate_rtp_packets(Data, MTU, SequenceNumber, Timestamp, TimestampIncrement, SSRC, PayloadType),
 
-          %% Открываем сокет
           {ok, Socket} = gen_udp:open(ServerPort, [binary, {active, false}]),
           io:format("Streaming on port ~p to ~p~n", [ServerPort, ClientPort]),
 
-          %% Отправляем RTP-пакеты
           send_video(Socket, ClientIp, ClientPort, Packets),
           gen_udp:close(Socket),
           io:format("Video streaming complete~n"),
