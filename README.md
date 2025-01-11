@@ -166,13 +166,13 @@ init([]) ->
   process_flag(trap_exit, true),
   {ok, ListenSocket} = gen_tcp:listen(7554, ?Options),
   io:format("RTSP Server started on port 7554~n"),
-  accept(ListenSocket),
+%%  accept(ListenSocket),
   {ok, ListenSocket}.
 
 accept(ListenSocket) ->
   {ok, Socket} = gen_tcp:accept(ListenSocket),
   {ok, {ClientIP, _ClientPort}} = inet:peername(Socket),
-  io:format("client ip ~p~n", [ClientIP]),
+  io:format("aboba client ip ~p~n", [ClientIP]),
 
   spawn_link(fun() ->
     fp_rtsp_worker:start(Socket, ClientIP)
@@ -185,6 +185,9 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+handle_call({turn_on_rtsp}, _From, ListenSocket) ->
+  accept(ListenSocket),
+  {reply, started, ListenSocket};
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
