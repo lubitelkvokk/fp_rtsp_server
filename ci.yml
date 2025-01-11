@@ -1,0 +1,27 @@
+name: Erlang CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: 24
+
+      - name: Setup rebar3
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install rebar3
+
+
+      - name: Run Dialyzer
+        run: |
+          rebar3 dialyzer
